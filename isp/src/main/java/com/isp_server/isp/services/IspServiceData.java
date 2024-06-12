@@ -18,6 +18,9 @@ import com.isp_server.isp.core.http.HttpResponse;
 import com.isp_server.isp.core.http.HttpServices;
 import com.isp_server.isp.models.exceptions.BadGatewayException;
 import com.isp_server.isp.models.exceptions.BadRequestException;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.ResponseEntity;
 
@@ -53,6 +56,17 @@ public class IspServiceData implements IspServices {
         return ResponseEntity.ok().build();
     }
 
+    @Override
+    public void obterArquivo(String fileName, HttpServletResponse response) throws BadRequestException, BadGatewayException {
+        List<String> urlProfilerServer = getDnsUrl("profiler");
+        fileName = formatFileName(fileName);
+        HttpResponse responseReq = sendRequestToProfilerReade(urlProfilerServer, fileName);
+
+        if(responseReq.getStatusCode() != 200){
+            throw new BadRequestException(responseReq.getBody(), responseReq.getStatusCode());
+        }
+        System.out.println(responseReq.getBody());
+    }
 
     private List<String> getDnsUrl(String appName, int size) throws BadGatewayException{
         List<String> urls = new ArrayList<>();
@@ -111,6 +125,23 @@ public class IspServiceData implements IspServices {
             String url = urlIterator.next()+"/salvarArquivo/"+fileName;
             try {
                 response = httpServices.sendPost(url, jsonBody, headers);
+                break;
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
+        }
+
+        return response;
+    }
+
+    private HttpResponse sendRequestToProfilerReade(List<String> urlProfilerServer, String fileName)throws BadRequestException, BadGatewayException{
+        HttpResponse response = null;
+        Iterator<String> urlIterator = urlProfilerServer.iterator();
+        
+        while (urlIterator.hasNext()) {
+            String url = urlIterator.next()+"/obterArquivo/"+fileName;
+            try {
+                response = httpServices.sendGet(url);
                 break;
             } catch (Exception e) {
                 System.out.println(e.getMessage());

@@ -1,0 +1,85 @@
+ private void conteinerDadosVeiculo() throws Exception{
+        blockDisplay(65, 283, 450, 200);
+        addTitleDadosVeiculo();
+        breakLine();
+        addFristLineDadosVeiculo();
+        breakLine();
+        add2LineDadosVeiculo();
+    }
+
+    private void addTitleDadosVeiculo() throws Exception{
+        Font font = FontFactory.getFont(FontFactory.COURIER, 12, Font.NORMAL);  
+        Paragraph lbl_titulo = new Paragraph("Dados do Veiculo", font);
+        lbl_titulo.setIndentationLeft(45);
+        document.add(lbl_titulo);
+
+        PdfContentByte canvas = writer.getDirectContent();
+        canvas.saveState();
+
+        canvas.setColorFill(new BaseColor(0, 15, 255, 25));
+        canvas.setColorStroke(BaseColor.BLACK);
+
+        canvas.rectangle(65, document.top() - 108, 140, 25); 
+        canvas.fill();
+
+        canvas.setLineWidth(0.5f);
+        canvas.rectangle(65, document.top() - 108, 140, 25); 
+        canvas.stroke();
+        
+        canvas.restoreState();
+    }
+
+    private void addFristLineDadosVeiculo() throws Exception{
+        
+        String marca_lbl = "Fiat";
+        String modelo_lbl = "Siena El";
+        String uf_lbl = "BA";
+
+        Paragraph fristLineConteiner = new Paragraph();
+        Paragraph marca = new Paragraph("Marca: "+marca_lbl, baseFont);
+        Paragraph modelo = new Paragraph("Modelo: "+modelo_lbl, baseFont);
+        Paragraph uf = new Paragraph("Uf: "+uf_lbl, baseFont);
+        Phrase phrase = new Phrase();
+        
+        Chunk space = getSpace(25 - modelo_lbl.length());
+        
+        phrase.add(marca);
+        phrase.add(space);
+        phrase.add(modelo);
+        space = getSpace(25 - modelo_lbl.length());
+        phrase.add(space);
+        phrase.add(uf);
+        fristLineConteiner.add(phrase);
+        fristLineConteiner.setIndentationLeft(45); 
+
+        document.add(fristLineConteiner);
+    }
+
+    private void add2LineDadosVeiculo() throws Exception{
+        String placa_lbl = "NTW-0102";
+        String cor_lbl = "Prata";
+
+        Paragraph line2Conteiner = new Paragraph();
+        Paragraph placa = new Paragraph("Placa: "+placa_lbl, baseFont);
+        Paragraph cor = new Paragraph("Cor: "+cor_lbl, baseFont);
+        Phrase phrase = new Phrase();
+        
+        Chunk space = getSpace(25 - placa_lbl.length());
+        
+        phrase.add(placa);
+        phrase.add(space);
+        phrase.add(cor);
+        space = getSpace(25 - placa_lbl.length());
+        phrase.add(space);
+        line2Conteiner.add(phrase);
+        line2Conteiner.setIndentationLeft(45); 
+
+        document.add(line2Conteiner);
+    }
+
+
+
+
+
+
+nohup java -jar ./financeirosystem-0.0.1-SNAPSHOT.jar > output.log 2>&1 &

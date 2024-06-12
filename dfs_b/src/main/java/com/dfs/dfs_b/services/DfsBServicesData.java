@@ -1,17 +1,40 @@
 package com.dfs.dfs_b.services;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Base64;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import com.dfs.dfs_b.core.DfsBServices;
 
 @Service
 public class DfsBServicesData implements DfsBServices{
-    private static final String STARAGE_DIR = System.getProperty("user.dir");
+    private static final String STORAGE_DIR = System.getProperty("user.dir")+"/"+"uploads";
 
     @Override
     public ResponseEntity<Void> writeFile(String fileName, String fileBase64) {
-       System.out.println(STARAGE_DIR);
-       return ResponseEntity.ok().build();
+        Path filePath = Paths.get(STORAGE_DIR, fileName);
+        byte[] fileBytes = base64ToByte(fileBase64);
+
+        try {
+            if (!Files.exists(Paths.get(STORAGE_DIR))) {
+                Files.createDirectories(Paths.get(STORAGE_DIR));
+            }
+
+            Files.write(filePath, fileBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            return ResponseEntity.ok().build();
+        } catch (IOException e) {
+            return ResponseEntity.status(500).build();
+        }
+
+    }
+
+    private byte[] base64ToByte(String fileBase64){
+        return Base64.getDecoder().decode(fileBase64);
     }
     
 }

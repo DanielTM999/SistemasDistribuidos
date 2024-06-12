@@ -1,5 +1,6 @@
 package com.dfs.dfs_c.controllers;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,6 +14,7 @@ import com.dfs.dfs_c.models.exceptions.BadRequestException;
 @RestController
 public class MainController {
     
+    @Autowired
     private DfsCServices cServices;
 
     @PostMapping("/salvarArquivo")
