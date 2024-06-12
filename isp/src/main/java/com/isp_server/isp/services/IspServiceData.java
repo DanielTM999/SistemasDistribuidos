@@ -1,6 +1,7 @@
 package com.isp_server.isp.services;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -24,7 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.http.ResponseEntity;
 
-@SuppressWarnings({"unused"})
+@SuppressWarnings({ "unused" })
 @Service
 public class IspServiceData implements IspServices {
     private static int version = 1;
@@ -36,29 +37,31 @@ public class IspServiceData implements IspServices {
     private DiscoveryClient discoveryClient;
 
     @Override
-    public ResponseEntity<Void> salvarArquivo(String fileName, MultipartFile fileBytes) throws BadRequestException, BadGatewayException {
+    public ResponseEntity<Void> salvarArquivo(String fileName, MultipartFile fileBytes)
+            throws BadRequestException, BadGatewayException {
         validArquivo(fileBytes);
         byte[] fileByteStream = new byte[0];
         try {
             fileByteStream = fileBytes.getBytes();
         } catch (IOException e) {
-            throw new BadRequestException("Erro ao obter dados do arquivo: "+ fileBytes.getName(), 400);
+            throw new BadRequestException("Erro ao obter dados do arquivo: " + fileBytes.getName(), 400);
         }
 
         List<String> urlProfilerServer = getDnsUrl("profiler");
         fileName = formatFileName(fileName);
         HttpResponse response = sendRequestToProfilerWrite(urlProfilerServer, fileByteStream, fileName);
-        
-        if(response.getStatusCode() != 200){
+
+        if (response.getStatusCode() != 200) {
             throw new BadRequestException(response.getBody(), response.getStatusCode());
         }
-        
+
         return ResponseEntity.ok().build();
     }
 
     @Override
-    public void obterArquivo(String fileName, HttpServletResponse response) throws BadRequestException, BadGatewayException {
-        if(fileName == null || fileName.isEmpty()){
+    public void obterArquivo(String fileName, HttpServletResponse response)
+            throws BadRequestException, BadGatewayException {
+        if (fileName == null || fileName.isEmpty()) {
             throw new BadRequestException("\"code\":400, \"error\":\"fileName can not null\"", 400);
         }
 
@@ -66,13 +69,27 @@ public class IspServiceData implements IspServices {
         fileName = formatFileNameExt(fileName);
         HttpResponse responseReq = sendRequestToProfilerReade(urlProfilerServer, fileName);
 
-        if(responseReq.getStatusCode() != 200){
+        if (responseReq.getStatusCode() != 200) {
             throw new BadRequestException(responseReq.getBody(), responseReq.getStatusCode());
         }
-        System.out.println(responseReq.getBody());
+        byte[] fileBytes = Base64.getDecoder().decode(responseReq.getBody());
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+        try {
+            OutputStream outputStream = response.getOutputStream();
+            outputStream.write(fileBytes);
+            outputStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            try {
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erro ao processar o arquivo");
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+        }
     }
 
-    private List<String> getDnsUrl(String appName, int size) throws BadGatewayException{
+    private List<String> getDnsUrl(String appName, int size) throws BadGatewayException {
         List<String> urls = new ArrayList<>();
         List<ServiceInstance> instances = discoveryClient.getInstances(appName);
         if (instances != null && !instances.isEmpty()) {
@@ -83,10 +100,10 @@ public class IspServiceData implements IspServices {
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found: "+appName, 502);
+        throw new BadGatewayException("DNS not found: " + appName, 502);
     }
 
-    private List<String> getDnsUrl(String appName) throws BadGatewayException{
+    private List<String> getDnsUrl(String appName) throws BadGatewayException {
         List<String> urls = new ArrayList<>();
         List<ServiceInstance> instances = discoveryClient.getInstances(appName);
         if (instances != null && !instances.isEmpty()) {
@@ -97,36 +114,42 @@ public class IspServiceData implements IspServices {
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found: "+appName, 502);
+        throw new BadGatewayException("DNS not found: " + appName, 502);
     }
 
-    private String toCharFile(byte[] fileByteStream){
+    private String toCharFile(byte[] fileByteStream) {
         return Base64.getEncoder().encodeToString(fileByteStream);
     }
-    
-    private void validArquivo(MultipartFile fileBytes) throws BadRequestException{
-        if(fileBytes == null) throw new BadRequestException("Arquivo vazio informe um arquivo", 400);
-    
+
+    private void validArquivo(MultipartFile fileBytes) throws BadRequestException {
+        if (fileBytes == null)
+            throw new BadRequestException("Arquivo vazio informe um arquivo", 400);
+
         int indexExt = fileBytes.getOriginalFilename().indexOf(".");
-        if(indexExt == -1) throw new BadRequestException("Arquivo tem que possuir extenção", 400);
+        if (indexExt == -1)
+            throw new BadRequestException("Arquivo tem que possuir extenção", 400);
         String ext = fileBytes.getOriginalFilename().substring(indexExt, fileBytes.getOriginalFilename().length());
-    
-        if(!ext.equalsIgnoreCase(".txt")){
-            throw new BadRequestException("Devido a motivos de segurança e injeção de scripts apenas é permitido arquivos .TXT", 400);
+
+        if (!ext.equalsIgnoreCase(".txt")) {
+            throw new BadRequestException(
+                    "Devido a motivos de segurança e injeção de scripts apenas é permitido arquivos .TXT", 400);
         }
     }
 
-    private HttpResponse sendRequestToProfilerWrite(List<String> urlProfilerServer, byte[] fileByteStreamm, String fileName) throws BadRequestException, BadGatewayException{
+    private HttpResponse sendRequestToProfilerWrite(List<String> urlProfilerServer, byte[] fileByteStreamm,
+            String fileName) throws BadRequestException, BadGatewayException {
         HttpResponse response = null;
-        Map<String, String> headers = new HashMap<>(){{
-            put("Content-Type", "application/json");
-        }};
+        Map<String, String> headers = new HashMap<>() {
+            {
+                put("Content-Type", "application/json");
+            }
+        };
         String jsonBulder = "{\"file64\":\"%s\"}";
         String jsonBody = String.format(jsonBulder, toCharFile(fileByteStreamm));
         Iterator<String> urlIterator = urlProfilerServer.iterator();
-        
+
         while (urlIterator.hasNext()) {
-            String url = urlIterator.next()+"/salvarArquivo/"+fileName;
+            String url = urlIterator.next() + "/salvarArquivo/" + fileName;
             try {
                 response = httpServices.sendPost(url, jsonBody, headers);
                 break;
@@ -138,12 +161,13 @@ public class IspServiceData implements IspServices {
         return response;
     }
 
-    private HttpResponse sendRequestToProfilerReade(List<String> urlProfilerServer, String fileName)throws BadRequestException, BadGatewayException{
+    private HttpResponse sendRequestToProfilerReade(List<String> urlProfilerServer, String fileName)
+            throws BadRequestException, BadGatewayException {
         HttpResponse response = null;
         Iterator<String> urlIterator = urlProfilerServer.iterator();
-        
+
         while (urlIterator.hasNext()) {
-            String url = urlIterator.next()+"/obterArquivo/"+fileName;
+            String url = urlIterator.next() + "/obterArquivo/" + fileName;
             try {
                 response = httpServices.sendGet(url);
                 break;
@@ -155,28 +179,28 @@ public class IspServiceData implements IspServices {
         return response;
     }
 
-    private String formatFileName(String fileName){
+    private String formatFileName(String fileName) {
         int indexExt = fileName.indexOf(".");
         String name = fileName;
         String ext = ".txt";
-        if(indexExt != -1 ){
+        if (indexExt != -1) {
             ext = fileName.substring(indexExt, fileName.length());
             name = fileName.substring(0, indexExt);
         }
-        fileName = name + "_V"+version+ext;
+        fileName = name + "_V" + version + ext;
         version++;
         return fileName.toLowerCase();
     }
 
-    private String formatFileNameExt(String fileName){
+    private String formatFileNameExt(String fileName) {
         int indexExt = fileName.indexOf(".");
         String name = fileName;
         String ext = ".txt";
-        if(indexExt != -1 ){
+        if (indexExt != -1) {
             ext = fileName.substring(indexExt, fileName.length());
             name = fileName.substring(0, indexExt);
         }
-        fileName = name+ext;
+        fileName = name + ext;
         return fileName.toLowerCase();
     }
 }
