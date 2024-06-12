@@ -30,6 +30,7 @@ public class MasterNodeServicesData implements MasterNodeServices{
     @Override
     public ResponseEntity<Void> salvarArquivo(String fileName, String fileBase64) throws BadRequestException, BadGatewayException {
         String url = urlRandomToSend();
+        System.out.println(fileName);
         HttpResponse response = sendRequestToProfilerWrite(url, fileBase64, fileName);
         if(response.getStatusCode() != 200){
             throw new BadRequestException(response.getBody(), response.getStatusCode());
