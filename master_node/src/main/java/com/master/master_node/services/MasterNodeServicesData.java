@@ -39,6 +39,23 @@ public class MasterNodeServicesData implements MasterNodeServices{
         return ResponseEntity.ok().build();
     }
 
+    @Override
+    public ResponseEntity<String> obterArquivo(String fileName) throws BadRequestException, BadGatewayException {
+        List<String> urlDfsB = getDnsUrl("dfs_b");
+        List<String> urlDfsC = getDnsUrl("dfs_c");
+        
+        HttpResponse responseB = sendRequestToProfilerReader(urlDfsB, fileName);
+        HttpResponse responseC = sendRequestToProfilerReader(urlDfsC, fileName);
+
+        if(responseB.getStatusCode() == 200 && (responseB.getBody() != null && !responseB.getBody().isBlank())){
+            return ResponseEntity.ok().body(responseB.getBody());
+        }else if(responseC.getStatusCode() == 200 && (responseC.getBody() != null && !responseC.getBody().isBlank())){
+            return ResponseEntity.ok().body(responseC.getBody());
+        }else{
+            throw new BadGatewayException("file not found", 404);
+        }
+    }
+
     private List<String> getDnsUrl(String appName) throws BadGatewayException{
         List<String> urls = new ArrayList<>();
         List<ServiceInstance> instances = discoveryClient.getInstances(appName);
@@ -50,7 +67,7 @@ public class MasterNodeServicesData implements MasterNodeServices{
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found", 502);
+        throw new BadGatewayException("DNS not found: "+appName, 502);
     }
     
     private String urlRandomToSend() throws BadGatewayException{
@@ -76,6 +93,23 @@ public class MasterNodeServicesData implements MasterNodeServices{
             response = httpServices.sendPost(url, jsonBody, headers);
         } catch (Exception e) {
             System.out.println(e.getMessage());
+        }
+
+        return response;
+    }
+
+    private HttpResponse sendRequestToProfilerReader(List<String> urlServer, String fileName) throws BadRequestException, BadGatewayException{
+        HttpResponse response = null;
+        Iterator<String> urlIterator = urlServer.iterator();
+        
+        while (urlIterator.hasNext()) {
+            String url = urlIterator.next()+"/obterArquivo/"+fileName;
+            try {
+                response = httpServices.sendGet(url);
+                break;
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
         }
 
         return response;

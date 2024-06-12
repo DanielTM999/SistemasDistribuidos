@@ -38,6 +38,18 @@ public class ProfilerServiceData implements ProfilerService{
         return ResponseEntity.ok().build();
     }
 
+    @Override
+    public ResponseEntity<String> obterArquivo(String fileName) throws BadRequestException, BadGatewayException {
+        List<String> urlMasterNode = getDnsUrl("master_node");
+        HttpResponse response = sendRequestToProfilerReader(urlMasterNode, fileName);
+
+        if(response.getStatusCode() != 200){
+            throw new BadRequestException(response.getBody(), response.getStatusCode());
+        }
+
+        return ResponseEntity.ok().body(response.getBody());
+    }
+
     private List<String> getDnsUrl(String appName) throws BadGatewayException{
         List<String> urls = new ArrayList<>();
         List<ServiceInstance> instances = discoveryClient.getInstances(appName);
@@ -49,7 +61,7 @@ public class ProfilerServiceData implements ProfilerService{
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found", 502);
+        throw new BadGatewayException("DNS not found: "+appName, 502);
     }
 
     private HttpResponse sendRequestToProfilerWrite(List<String> urlProfilerServer, String fileBase64, String fileName) throws BadRequestException, BadGatewayException{
@@ -65,6 +77,23 @@ public class ProfilerServiceData implements ProfilerService{
             String url = urlIterator.next()+"/salvarArquivo";
             try {
                 response = httpServices.sendPost(url, jsonBody, headers);
+                break;
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+            }
+        }
+
+        return response;
+    }
+
+    private HttpResponse sendRequestToProfilerReader(List<String> urlProfilerServer, String fileName) throws BadRequestException, BadGatewayException{
+        HttpResponse response = null;
+        Iterator<String> urlIterator = urlProfilerServer.iterator();
+        
+        while (urlIterator.hasNext()) {
+            String url = urlIterator.next()+"/obterArquivo/"+fileName;
+            try {
+                response = httpServices.sendGet(url);
                 break;
             } catch (Exception e) {
                 System.out.println(e.getMessage());

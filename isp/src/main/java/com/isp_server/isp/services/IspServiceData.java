@@ -58,8 +58,12 @@ public class IspServiceData implements IspServices {
 
     @Override
     public void obterArquivo(String fileName, HttpServletResponse response) throws BadRequestException, BadGatewayException {
+        if(fileName == null || fileName.isEmpty()){
+            throw new BadRequestException("\"code\":400, \"error\":\"fileName can not null\"", 400);
+        }
+
         List<String> urlProfilerServer = getDnsUrl("profiler");
-        fileName = formatFileName(fileName);
+        fileName = formatFileNameExt(fileName);
         HttpResponse responseReq = sendRequestToProfilerReade(urlProfilerServer, fileName);
 
         if(responseReq.getStatusCode() != 200){
@@ -79,7 +83,7 @@ public class IspServiceData implements IspServices {
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found", 502);
+        throw new BadGatewayException("DNS not found: "+appName, 502);
     }
 
     private List<String> getDnsUrl(String appName) throws BadGatewayException{
@@ -93,7 +97,7 @@ public class IspServiceData implements IspServices {
             }
             return urls;
         }
-        throw new BadGatewayException("DNS not found", 502);
+        throw new BadGatewayException("DNS not found: "+appName, 502);
     }
 
     private String toCharFile(byte[] fileByteStream){
@@ -161,6 +165,18 @@ public class IspServiceData implements IspServices {
         }
         fileName = name + "_V"+version+ext;
         version++;
-        return fileName;
+        return fileName.toLowerCase();
+    }
+
+    private String formatFileNameExt(String fileName){
+        int indexExt = fileName.indexOf(".");
+        String name = fileName;
+        String ext = ".txt";
+        if(indexExt != -1 ){
+            ext = fileName.substring(indexExt, fileName.length());
+            name = fileName.substring(0, indexExt);
+        }
+        fileName = name+ext;
+        return fileName.toLowerCase();
     }
 }
